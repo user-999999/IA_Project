@@ -240,8 +240,8 @@
                     </ul>
             
                     <div id="yes-no-container" class="text-center">
-                      <div id="yes-no-box" class="{% if 'wet' in summary2 %}not-detected{% else %}detected{% endif %}">
-                        {% if 'wet' in summary2 %} No {% else %} Yes {% endif %}
+                      <div id="yes-no-box" class="{% if 'wet' in summary2 or 'Slurry' in summary1 %}not-detected{% else %}detected{% endif %}">
+                        {% if 'wet' in summary2 or 'Slurry' in summary1 %} No {% else %} Yes {% endif %}
                       </div>
                     </div>
             
