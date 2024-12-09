@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, Response, jsonify, send_from_directory, url_for
+from flask import Flask, render_template, request, redirect, Response, jsonify, send_from_directory, url_for, flash
 from ultralytics import YOLO
 import cv2
 import os
@@ -7,6 +7,7 @@ import threading
 import numpy as np
 from PIL import Image
 import logging
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 
@@ -50,6 +51,46 @@ def loadindpage():
     return render_template('LoadingPage.html')
 
 ########################################
+# Send Email funtion
+########################################
+# 配置 Flask-Mail 使用 Gmail SMTP 伺服器
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'pao146367@gmail.com'     # 您的 Gmail 地址
+app.config['MAIL_PASSWORD'] = 'wzjp nlzr mozl auad'     # 您的應用程式密碼
+app.secret_key = '52KafuuChino'                         # 秘密密鑰
+
+mail = Mail(app)
+
+# 發送郵件的輔助函數
+def send_email(recipient, subject, body):
+    msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[recipient])
+    msg.body = body
+    mail.send(msg)
+
+# 功能：自動發送郵件
+def auto_send_imageResult(summary1, summary2):
+    recipient = 'lai.kafuu.chino@gmail.com'  # 替換為實際收件人
+    body = "檢測結果:\n"
+
+    items = ['Slurry', 'dirt', 'nothing', 'wet', 'stone']
+    for item in items:
+        status = '已檢測到' if item in summary1 else '未檢測到'
+        body += f"{item}: {status}\n"
+
+    wet_status = '有' if 'wet' in summary2 else '沒有'
+    body += f"潮濕情況檢測: {wet_status}\n"
+
+    if 'wet' in summary2:
+        body += "警告: 檢測到潮濕！\n"
+
+    send_email(recipient, "功能1檢測結果", body)
+    flash('功能1結果郵件已自動發送！', 'success')
+
+
+########################################
 # 圖片檢測功能
 ########################################
 @app.route('/imgpred', methods=['GET', 'POST'])
@@ -83,6 +124,9 @@ def imgpred():
         result_path2 = os.path.join(base_dir, 'results_model2', 'result_model2_' + unique_filename)
         Image.fromarray(result_image2[..., ::-1]).save(result_path2)
         summary2 = summarize_results_model(results2, "Model 2")
+
+        #Send email
+        auto_send_imageResult(summary1, summary2)
 
         return render_template('ObjectDetection.html', summary1=summary1, image_pred1=result_path1,
                                summary2=summary2, image_pred2=result_path2, image_path=original_image_path)

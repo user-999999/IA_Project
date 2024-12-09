@@ -7,7 +7,8 @@ RUN pip install --upgrade pip && \
     opencv-python \
     Flask-SocketIO \
     tensorflow \
-    numpy
+    numpy \
+    Flask-Mail
 
 WORKDIR /app
 
