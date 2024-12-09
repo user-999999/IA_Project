@@ -65,13 +65,17 @@ app.secret_key = '52KafuuChino'                         # 秘密密鑰
 mail = Mail(app)
 
 # 發送郵件的輔助函數
-def send_email(recipient, subject, body):
+def send_email(recipient, subject, body, image_path=None):
     msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[recipient])
     msg.body = body
+    # 附加原始圖片
+    if image_path:
+        with app.open_resource(image_path) as fp:
+            msg.attach(os.path.basename(image_path), 'image/jpeg', fp.read())
     mail.send(msg)
 
 # 功能：自動發送郵件
-def auto_send_imageResult(summary1, summary2):
+def auto_send_imageResult(summary1, summary2,  image_path):
     recipient = 'lai.kafuu.chino@gmail.com'  # 替換為實際收件人
     body = "檢測結果:\n"
 
@@ -86,7 +90,7 @@ def auto_send_imageResult(summary1, summary2):
     if 'wet' in summary2:
         body += "警告: 檢測到潮濕！\n"
 
-    send_email(recipient, "圖片檢測結果", body)
+    send_email(recipient, "圖片檢測結果", body, image_path)
     flash('功能1結果郵件已自動發送！', 'success')
 
 
@@ -126,7 +130,7 @@ def imgpred():
         summary2 = summarize_results_model(results2, "Model 2")
 
         #Send email
-        auto_send_imageResult(summary1, summary2)
+        auto_send_imageResult(summary1, summary2, original_image_path)
 
         return render_template('ObjectDetection.html', summary1=summary1, image_pred1=result_path1,
                                summary2=summary2, image_pred2=result_path2, image_path=original_image_path)
