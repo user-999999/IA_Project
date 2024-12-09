@@ -75,7 +75,7 @@ def auto_send_imageResult(summary1, summary2):
     recipient = 'lai.kafuu.chino@gmail.com'  # 替換為實際收件人
     body = "檢測結果:\n"
 
-    items = ['Slurry', 'dirt', 'nothing', 'wet', 'stone']
+    items = ['Slurry', 'dirt', 'nothing', 'other', 'stone']
     for item in items:
         status = '已檢測到' if item in summary1 else '未檢測到'
         body += f"{item}: {status}\n"
@@ -86,7 +86,7 @@ def auto_send_imageResult(summary1, summary2):
     if 'wet' in summary2:
         body += "警告: 檢測到潮濕！\n"
 
-    send_email(recipient, "功能1檢測結果", body)
+    send_email(recipient, "圖片檢測結果", body)
     flash('功能1結果郵件已自動發送！', 'success')
 
 
