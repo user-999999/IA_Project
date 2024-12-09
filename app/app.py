@@ -54,13 +54,14 @@ def loadindpage():
 # Send Email funtion
 ########################################
 # 配置 Flask-Mail 使用 Gmail SMTP 伺服器
+# reference : https://github.com/twtrubiks/Flask-Mail-example?tab=readme-ov-file
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'pao146367@gmail.com'     # 您的 Gmail 地址
-app.config['MAIL_PASSWORD'] = 'wzjp nlzr mozl auad'     # 您的應用程式密碼
-app.secret_key = '52KafuuChino'                         # 秘密密鑰
+app.config['MAIL_USERNAME'] = 'xyxz55124019@gmail.com'     # Gmail 地址
+app.config['MAIL_PASSWORD'] = 'uivh botp tcwb tybz'     # 應用程式密碼
+# app.secret_key = '52KafuuChino'                         # 秘密密鑰
 
 mail = Mail(app)
 
