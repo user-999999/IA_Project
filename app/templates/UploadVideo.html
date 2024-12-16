@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video detection</title>
+  <title>Video Detection</title>
 
   <!-- js -->
   <script src="static/js/script.js" type="text/javascript"></script>
@@ -81,10 +81,46 @@
       }
     }
 
-    #content {
-      display: block;
-      /* 初始隱藏內容 */
+    .detected {
+      background-color: green;
+      color: white;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
     }
+
+    .not-detected {
+      background-color: grey;
+      color: white;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+    }
+
+    #yes-no-box {
+      font-size: 24px;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 5px;
+      color: white;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .yes {
+      background-color: green;
+      color: white;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+    }
+
+    .no {
+        background-color: red;
+        color: white;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+    }
+    
   </style>
 
   <script>
@@ -96,50 +132,61 @@
       document.getElementById("loading").style.display = "none";
     }
 
-    document.getElementById('upload-button').addEventListener('click', function () {
-          this.disabled = true;  // Disable the button
-          this.style.display = 'none';  // Hide the button
-          showLoading();  // Show loading spinner
-        });
+    // 獲取檢測結果並更新顯示
+    async function fetchDetectionResults() {
+        const response = await fetch('/get_detection_results');
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Detected items:", data.detected_items);  // Debugging output
+            updateItemDisplay(data.detected_items);
+        } else {
+            console.error('Unable to fetch detection results');
+        }
+    }
 
-        document.querySelector('form').addEventListener('submit', function () {
-          showLoading();
-        });
+    function updateItemDisplay(detectedItems) {
+        console.log("Detected items to update:", detectedItems);
+        const items = {
+            'Dump-truck': document.getElementById('Dump-truck'),
+            'Person': document.getElementById('Person'),
+            'Other-truck': document.getElementById('Other-truck'),
+            'wet': document.getElementById('wet'),
+        };
 
-        // 獲取檢測結果並更新顯示
-        async function fetchDetectionResults() {
-            const response = await fetch('/get_detection_results');
-            if (response.ok) {
-                const data = await response.json();
-                console.log("檢測到的物體:", data.detected_items);  // 調試打印
-                const detectedItems = data.detected_items;  // 確保這是一個數組
-                updateItemDisplay(detectedItems);
+        let wetDetected = detectedItems.includes('wet');
+
+        for (const [item, element] of Object.entries(items)) {
+            if (detectedItems.includes(item)) {
+                console.log(`Detected: ${item}`);
+                element.classList.remove('not-detected');
+                element.classList.add('detected');
             } else {
-                console.error('無法獲取檢測結果');
+                console.log(`Not detected: ${item}`);
+                element.classList.remove('detected');
+                element.classList.add('not-detected');
             }
         }
 
-        // 更新物品顯示狀態
-        function updateItemDisplay(detectedItems) {
-            const items = {
-                'Dump-truck': document.getElementById('Dump-truck'),
-                'Person': document.getElementById('Person'),
-                'Other-truck': document.getElementById('Other-truck'),
-            };
-
-            for (const [item, element] of Object.entries(items)) {
-                if (detectedItems.includes(item)) {
-                    element.classList.remove('not-detected');
-                    element.classList.add('detected');
-                } else {
-                    element.classList.remove('detected');
-                    element.classList.add('not-detected');
-                }
-            }
+        // Update the yes-no box based on 'wet' detection
+        const yesNoBox = document.getElementById('yes-no-box');
+        if (wetDetected) {
+            yesNoBox.textContent = "No";  // Show "No" if wet is detected
+            yesNoBox.classList.remove('yes');
+            yesNoBox.classList.add('no');
+        } else {
+            yesNoBox.textContent = "Yes";  // Show "Yes" otherwise
+            yesNoBox.classList.remove('no');
+            yesNoBox.classList.add('yes');
         }
+    }
 
-        // 在頁面加載時獲取檢測結果
-        window.onload = fetchDetectionResults;
+    // Fetch results periodically if needed
+    setInterval(fetchDetectionResults, 1000);  // Adjust the interval as necessary
+
+    // 在頁面加載時獲取檢測結果
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchDetectionResults();  // Call it directly
+    });
   </script>
 
 </head>
@@ -162,7 +209,6 @@
     </div>
   </div>
 
-  <!--  -->
   <section class="content" style="margin-top: 80px;">
     <div class="container-fluid">
       <div class="row">
@@ -178,21 +224,16 @@
             <div class="card-body">
               <div class="tab-content p-0">
                 <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
-
                   {% if filename %}
                   <img id="upload-video" src="{{ url_for('video_feed', filename=filename) }}" alt="Uploaded video"
                     onload="hide_word(); hideStream()"  style="width: 100%; height: auto;" />
                   {% endif %}
 
-                  <!-- Your main content -->
-                  <div id="main-content">
-                    <!-- Your website content here -->
-                  </div>
+                  <div id="main-content"></div>
 
                   <div class="container mt-5" id="loading-message">
                     <div class="row justify-content-between rounded">
                       <div class="col-md-9">
-
                         <form action="{{ url_for('vidpred') }}" method="post" enctype="multipart/form-data"
                           class="card shadow p-3 mb-5 bg-white rounded" id="loading-message">
                           <div class="card-body">
@@ -203,7 +244,6 @@
                               onclick="loadStream()">上傳</button>
                           </div>
                         </form>
-
                       </div>
                     </div>
                   </div>
@@ -224,20 +264,16 @@
             <div class="card-body">
               <div class="tab-content p-0">
                 <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
-
-                  <ul id="image-detection-list" class="detection-list text-center">
-                    <li data-item="rock" class="not-detected">rock</li>
-                    <li data-item="slurry-soil" class="not-detected">slurry-soil</li>
-                    <li data-item="Non-inert" class="not-detected">Non-inert</li>
-                    <li data-item="inert" class="not-detected">inert</li>
-                    <li data-item="slurry; wet" class="not-detected">wet</li>
-                    <li data-item="truck" class="not-detected">truck</li>
-                  </ul>
+                  <div id="itemList">
+                    <div class="item not-detected" id="Dump-truck">卸土車</div>
+                    <div class="item not-detected" id="Person">人</div>
+                    <div class="item not-detected" id="Other-truck">Other-truck</div>
+                    <div class="item not-detected" id="wet">Wet detected</div>
+                  </div>
 
                   <div id="yes-no-container" class="text-center">
                     <div id="yes-no-box" class="not-detected">No</div>
                   </div>
-
                 </div>
               </div>
             </div>
@@ -246,11 +282,10 @@
       </div>
     </div>
   </section>
-  </div>
 
   <footer class="bg-dark py-4 mt-auto">
     <div class="text-center justify-content-between flex-column flex-sm-row">
-      <div class="small m-0 text-white"> &copy;Chun Wo Construction and Engineering Co. Ltd. </div>
+      <div class="small m-0 text-white"> &copy; Chun Wo Construction and Engineering Co. Ltd. </div>
     </div>
   </footer>
 </body>

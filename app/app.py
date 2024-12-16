@@ -15,6 +15,7 @@ app = Flask(__name__)
 model_img = YOLO('model/Iteam_object.pt')  # 圖像檢測模型
 model_test = YOLO('model/yolo11x.pt')  # 圖像檢測模型
 model_wd = YOLO('model/wet_dry.pt')        # 濕/乾分類模型
+model_yolov5 = YOLO('model/For_video.pt')
 link = 'rtsp://admin:Abcd1@34@182.239.73.242:8554'
 
 # 生成唯一檔案名稱
@@ -246,39 +247,37 @@ def get_class_name(class_id, model_name):
 # 影片檢測功能
 ########################################
 processing = False  # 處理狀態標誌
-detected_items = []  # 存儲檢測到的物體列表
+detected_items = []  # 存儲檢測到的物件列表
+lock = threading.Lock()  # 鎖，確保線程安全更新
 
 def generate_unique_filename(filename):
-    return filename  # 生成唯一文件名（當前實現不改變文件名）
+    return filename  # 當前不改變文件名
 
 def save_frame(frame, frame_number, output_path):
-    # 保存幀到指定路徑
     filename = os.path.join(output_path, f'frame_{frame_number:04d}.jpg')
     if cv2.imwrite(filename, frame):
-        print(f"成功保存: {filename}")  # 輸出保存成功的消息
+        print(f"成功保存: {filename}")
     else:
-        print(f"無法保存: {filename}")  # 輸出保存失敗的消息
+        print(f"無法保存: {filename}")
 
 def compress_frame(frame, quality=80):
-    # 壓縮幀
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]  # 設置JPEG質量
     result, buffer = cv2.imencode('.jpg', frame, encode_param)  # 編碼為JPEG
     return cv2.imdecode(buffer, cv2.IMREAD_COLOR)  # 解碼為圖像
 
 def process_video(video_path, output_folder):
     global processing
-    logging.info(f"開始處理影片: {video_path}")  # 記錄開始處理影片的日誌
+    logging.info(f"開始處理影片: {video_path}")
 
     cap = cv2.VideoCapture(video_path)  # 打開影片文件
     if not cap.isOpened():
-        logging.error("錯誤: 無法打開影片文件。")  # 如果無法打開影片，記錄錯誤
+        logging.error("錯誤: 無法打開影片文件。")
         return
 
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # 獲取幀寬度
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # 獲取幀高度
     fps = cap.get(cv2.CAP_PROP_FPS)  # 獲取幀率
 
-    # 創建 VideoWriter 來保存處理後的影片
     output_video_path = os.path.join(output_folder, 'output.avi')  # 設置輸出影片路徑
     fourcc = cv2.VideoWriter_fourcc(*'XVID')  # 設置編碼格式
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))  # 初始化 VideoWriter
@@ -288,58 +287,40 @@ def process_video(video_path, output_folder):
     while cap.isOpened() and processing:  # 當影片仍在打開且正在處理
         ret, frame = cap.read()  # 讀取一幀
         if not ret:
-            logging.info("沒有更多幀可讀或發生錯誤。")  # 如果沒有讀取到幀，記錄信息並退出
+            logging.info("沒有更多幀可讀或發生錯誤。")
             break
 
         try:
-            results = model_img(frame)  # 對幀進行物體檢測
-            logging.info(f"幀 {frame_number} 的檢測結果: {results}")  # 記錄檢測結果
+            results = model_yolov5(frame)  # 對幀進行物體檢測
+            logging.info(f"幀 {frame_number} 的檢測結果: {results}")
 
             if results:  # 如果有檢測結果
                 annotated_frame = results[0].plot()  # 繪製標註幀
                 save_frame(annotated_frame, frame_number, output_folder)  # 保存標註幀
                 out.write(annotated_frame)  # 將處理後的幀寫入影片文件
-                logging.info(f"處理並保存幀 {frame_number}。")  # 記錄保存成功的消息
+                logging.info(f"處理並保存幀 {frame_number}。")
+
+                # 線程安全更新檢測到的物體
+                with lock:
+                    detected_items.extend([results[0].names[int(box[5])] for box in results[0].boxes.data])
             else:
-                logging.warning("幀中未檢測到任何物體。")  # 如果沒有檢測到物體，記錄警告
-                
+                logging.warning("幀中未檢測到任何物體。")
+
             frame_number += 1  # 增加幀計數
 
         except Exception as e:
-            logging.error(f"處理幀 {frame_number} 時發生錯誤: {e}")  # 記錄處理過程中的錯誤
+            logging.error(f"處理幀 {frame_number} 時發生錯誤: {e}")
 
     cap.release()  # 釋放影片捕捉對象
     out.release()  # 釋放 VideoWriter
-    logging.info("完成影片處理。")  # 記錄處理結束的消息
+    logging.info("完成影片處理。")
 
-def create_video_from_images(image_folder):
-    output_video_folder = 'static/output_videos'  # 輸出影片的文件夾
-    os.makedirs(output_video_folder, exist_ok=True)  # 創建文件夾
-
-    # 獲取文件夾中的所有圖像文件
-    images = [os.path.join(image_folder, f) for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png'))]
-    images.sort()  # 按名稱排序圖像
-
-    if not images:
-        print("找不到圖片。")  # 如果沒有找到圖像，輸出消息
-        return
-
-    first_image = cv2.imread(images[0])  # 讀取第一張圖像
-    height, width, _ = first_image.shape  # 獲取圖像的高度和寬度
-    video_path = os.path.join(output_video_folder, f'{uuid.uuid4()}.mp4')  # 生成輸出影片的路徑
-    video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'XVID'), 30, (width, height))  # 創建影片寫入對象
-    print(f"開始寫入影片到: {video_path}")  # 輸出開始寫入影片的消息
-
-    for img_path in images:  # 遍歷所有圖像
-        frame = cv2.imread(img_path)  # 讀取圖像
-        if frame is not None:
-            video_writer.write(frame)  # 寫入圖像幀到影片
-            print(f"寫入幀: {img_path}")  # 輸出寫入幀的消息
-        else:
-            print(f"無法讀取圖片: {img_path}")  # 輸出讀取失敗的消息
-
-    video_writer.release()  # 釋放影片寫入對象
-    print("影片寫入完成。")  # 輸出寫入完成的消息
+@app.route('/get_detection_results', methods=['GET'])
+def get_detection_results():
+    with lock:
+        unique_items = list(set(detected_items))  # 返回唯一的檢測物體
+    logging.info(f"當前檢測到的物體: {unique_items}")
+    return jsonify(detected_items=unique_items)  # 返回檢測到的物體列表
 
 @app.route('/vidpred', methods=['GET', 'POST'])
 def vidpred():
@@ -372,7 +353,7 @@ def generate_video_frames(video_path):
         if not ret:
             break  # 如果讀取失敗，則退出
 
-        results = model_img(frame)  # 在幀上運行物體檢測模型
+        results = model_yolov5(frame)  # 在幀上運行物體檢測模型
         if results:
             annotated_frame = results[0].plot()  # 繪製標註幀
             compressed_frame = compress_frame(annotated_frame)  # 壓縮幀
@@ -381,37 +362,14 @@ def generate_video_frames(video_path):
 
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')  # 發送幀
+
+    cap.release()  # 釋放影片捕捉對象
+    logging.info("影片處理完成。")
 
 @app.route('/video_feed/<filename>')
 def video_feed(filename):
-    return Response(generate_video_frames(os.path.join('static', 'videos', filename)), mimetype='multipart/x-mixed-replace; boundary=frame')  # 返回影片流
-
-@app.route('/videos_feed')
-def videos_feed(video_path):
-    cap = cv2.VideoCapture(video_path)  # 打開影片文件
-    while cap.isOpened() and processing:  # 當影片仍在打開且正在處理
-        ret, frame = cap.read()  # 讀取一幀
-        if not ret:
-            break  # 如果讀取失敗，則退出
-
-        results = model_img(frame)  # 在幀上運行物體檢測模型
-        if results:
-            annotated_frame = results[0].plot()  # 繪製標註幀
-            detected_items = [results[0].names[int(box[5])] for box in results[0].boxes.data]  # 獲取檢測到的物體名稱
-            compressed_frame = compress_frame(annotated_frame)  # 壓縮幀
-            ret, buffer = cv2.imencode('.jpg', compressed_frame)  # 將幀編碼為JPEG格式
-            frame_bytes = buffer.tobytes()  # 轉換為字節流
-
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')  # 發送幀
-    
-    return jsonify(detected_items=detected_items)  # 返回檢測到的物體列表
-
-@app.route('/get_detection_results', methods=['GET'])
-def get_detection_results():
-    global detected_items
-    print("當前檢測到的項目:", detected_items)  # 輸出當前檢測到的項目
-    return jsonify(detected_items=list(set(detected_items)))  # 返回唯一的檢測項目
+    return Response(generate_video_frames(os.path.join('static', 'videos', filename)),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')  # 返回影片流
 
 ########################################
 # 即時檢測功能
