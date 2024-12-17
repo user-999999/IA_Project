@@ -81,6 +81,10 @@
       }
     }
 
+    #content {
+      display: block;
+    }
+
     .detected {
       background-color: green;
       color: white;
@@ -105,6 +109,7 @@
       color: white;
       transition: background-color 0.3s, color 0.3s;
     }
+
     .yes {
       background-color: green;
       color: white;
@@ -114,79 +119,33 @@
     }
 
     .no {
-        background-color: red;
-        color: white;
-        padding: 10px;
-        margin: 5px 0;
-        border-radius: 5px;
+      background-color: red;
+      color: white;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
     }
-    
   </style>
 
   <script>
     function loadStream() {
-      document.getElementById("loading").style.display = "block";
+      document.getElementById('loading').style.display = 'none';
+
+      const img = new Image();
+      img.src = "{{ url_for('video_feed', filename=filename) }}";
+
+      img.onload = function () {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      };
     }
 
-    function hideStream() {
-      document.getElementById("loading").style.display = "none";
+    function aaa(){
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('content').style.display = 'none';
     }
 
-    // 獲取檢測結果並更新顯示
-    async function fetchDetectionResults() {
-        const response = await fetch('/get_detection_results');
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Detected items:", data.detected_items);  // Debugging output
-            updateItemDisplay(data.detected_items);
-        } else {
-            console.error('Unable to fetch detection results');
-        }
-    }
-
-    function updateItemDisplay(detectedItems) {
-        console.log("Detected items to update:", detectedItems);
-        const items = {
-            'Dump-truck': document.getElementById('Dump-truck'),
-            'Person': document.getElementById('Person'),
-            'Other-truck': document.getElementById('Other-truck'),
-            'wet': document.getElementById('wet'),
-        };
-
-        let wetDetected = detectedItems.includes('wet');
-
-        for (const [item, element] of Object.entries(items)) {
-            if (detectedItems.includes(item)) {
-                console.log(`Detected: ${item}`);
-                element.classList.remove('not-detected');
-                element.classList.add('detected');
-            } else {
-                console.log(`Not detected: ${item}`);
-                element.classList.remove('detected');
-                element.classList.add('not-detected');
-            }
-        }
-
-        // Update the yes-no box based on 'wet' detection
-        const yesNoBox = document.getElementById('yes-no-box');
-        if (wetDetected) {
-            yesNoBox.textContent = "No";  // Show "No" if wet is detected
-            yesNoBox.classList.remove('yes');
-            yesNoBox.classList.add('no');
-        } else {
-            yesNoBox.textContent = "Yes";  // Show "Yes" otherwise
-            yesNoBox.classList.remove('no');
-            yesNoBox.classList.add('yes');
-        }
-    }
-
-    // Fetch results periodically if needed
-    setInterval(fetchDetectionResults, 1000);  // Adjust the interval as necessary
-
-    // 在頁面加載時獲取檢測結果
-    document.addEventListener('DOMContentLoaded', () => {
-      fetchDetectionResults();  // Call it directly
-    });
+    window.onload = loadStream;
   </script>
 
 </head>
@@ -196,98 +155,96 @@
   <!-- loading message -->
   <div class="loader" id="loading">Loading...</div>
 
-  <div>
-    <div id="header">
-      <span style="font-size: 30px; cursor: pointer" onclick="openMenu()"> &#9776; </span>
+  <div id="content">
+    <div>
+      <div id="header">
+        <span style="font-size: 30px; cursor: pointer" onclick="openMenu()"> &#9776; </span>
+      </div>
+      <div class="setMenu" id="menu">
+        <a href="javascript:void(0)" class="close" onclick="closeMenu()">&times;</a>
+        <a href="/">首頁</a>
+        <a href="/liveDetect">實時檢測</a>
+        <a href="/vidpred">影片檢測</a>
+        <a href="/objectDetection">圖像檢測</a>
+        <a href="/template_video">示例(video)</a>
+        <a href="/template_image">示例(image)</a>
+      </div>
     </div>
-    <div class="setMenu" id="menu">
-      <a href="javascript:void(0)" class="close" onclick="closeMenu()">&times;</a>
-      <a href="/">首頁</a>
-      <a href="/liveDetect">實時檢測</a>
-      <a href="/vidpred">影片檢測</a>
-      <a href="/objectDetection">圖像檢測</a>
-    </div>
-  </div>
 
-  <section class="content" style="margin-top: 80px;">
-    <div class="container-fluid">
-      <div class="row">
-        <section class="col-lg-9 connectedSortable">
-          <div class="card">
-            <div class="card-header">
-              <h3 class="card-title">
-                <i class="fas fa-chart-pie mr-1"></i>
-                Object Detection
-              </h3>
-            </div>
+    <section class="content" style="margin-top: 80px;">
+      <div class="container-fluid">
+        <div class="row">
+          <section class="col-lg-9 connectedSortable">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-chart-pie mr-1"></i>
+                  Object Detection
+                </h3>
+              </div>
 
-            <div class="card-body">
-              <div class="tab-content p-0">
-                <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
-                  {% if filename %}
-                  <img id="upload-video" src="{{ url_for('video_feed', filename=filename) }}" alt="Uploaded video"
-                    onload="hide_word(); hideStream()"  style="width: 100%; height: auto;" />
-                  {% endif %}
+              <div class="card-body">
+                <div class="tab-content p-0">
+                  <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
+                    {% if filename %}
+                    <img id="upload-video" src="{{ url_for('video_feed', filename=filename) }}" alt="Uploaded video"
+                      onload="hide_word(); hideStream()" style="width: 100%; height: auto;" />
+                    {% endif %}
 
-                  <div id="main-content"></div>
+                    <div id="main-content"></div>
 
-                  <div class="container mt-5" id="loading-message">
-                    <div class="row justify-content-between rounded">
-                      <div class="col-md-9">
-                        <form action="{{ url_for('vidpred') }}" method="post" enctype="multipart/form-data"
-                          class="card shadow p-3 mb-5 bg-white rounded" id="loading-message">
-                          <div class="card-body">
-                            <h2 class="text-center">上傳圖片或視頻</h2>
-                            <p class="card-text text-center">請選擇您想要上傳的文件</p>
-                            <input type="file" name="video" class="form-control-file" id="inputFile" accept="video/*">
-                            <button class="btn btn-primary btn-block mt-3 w-100" type="submit"
-                              onclick="loadStream()">上傳</button>
-                          </div>
-                        </form>
+                    <div class="container mt-5" id="loading-message">
+                      <div class="row justify-content-between rounded">
+                        <div class="col-md-9">
+                          <form action="{{ url_for('vidpred') }}" method="post" enctype="multipart/form-data"
+                            class="card shadow p-3 mb-5 bg-white rounded" id="loading-message">
+                            <div class="card-body">
+                              <h2 class="text-center">上傳圖片或視頻</h2>
+                              <p class="card-text text-center">請選擇您想要上傳的文件</p>
+                              <input type="file" name="video" class="form-control-file" id="inputFile" accept="video/*">
+                              <button class="btn btn-primary btn-block mt-3 w-100" type="submit"
+                                onclick="aaa()">上傳</button>
+                            </div>
+                          </form>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-        </section>
+          </section>
 
-        <section class="col-lg-3 connectedSortable">
-          <div class="card">
-            <div class="card-header">
-              <h3 class="card-title">
-                <i class="fas fa-chart-pie mr-1"></i>
-                Object Detection Results
-              </h3>
-            </div>
+          <section class="col-lg-3 connectedSortable">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-chart-pie mr-1"></i>
+                  Object Detection Results
+                </h3>
+              </div>
 
-            <div class="card-body">
-              <div class="tab-content p-0">
-                <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
-                  <div id="itemList">
-                    <div class="item not-detected" id="Dump-truck">卸土車</div>
-                    <div class="item not-detected" id="Person">人</div>
-                    <div class="item not-detected" id="Other-truck">Other-truck</div>
-                    <div class="item not-detected" id="wet">Wet detected</div>
-                  </div>
+              <div class="card-body">
+                <div class="tab-content p-0">
+                  <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
+                    <div id="itemList">
+                      <div class="item not-detected" id="Dump-truck">卸土車</div>
+                      <div class="item not-detected" id="Person">人</div>
+                      <div class="item not-detected" id="Other-truck">Other-truck</div>
+                      <div class="item not-detected" id="wet">Wet detected</div>
+                    </div>
 
-                  <div id="yes-no-container" class="text-center">
-                    <div id="yes-no-box" class="not-detected">Yes</div>
+                    <div id="yes-no-container" class="text-center">
+                      <div id="yes-no-box" class="not-detected">Yes</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
-    </div>
-  </section>
-
-  <footer class="bg-dark py-4 mt-auto">
-    <div class="text-center justify-content-between flex-column flex-sm-row">
-      <div class="small m-0 text-white"> &copy; Chun Wo Construction and Engineering Co. Ltd. </div>
-    </div>
-  </footer>
+    </section>
+  </div>
 </body>
 
 </html>
