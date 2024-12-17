@@ -127,7 +127,7 @@
     }
   </style>
 
-  <!-- <script>
+  <script>
     function loadStream() {
       document.getElementById('loading').style.display = 'none';
 
@@ -146,7 +146,62 @@
     }
 
     window.onload = loadStream;
-  </script> -->
+
+    // 獲取檢測結果並更新顯示
+    async function fetchDetectionResults() {
+      const response = await fetch('/get_detection_results');
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Detected items:", data.detected_items);  // Debugging output
+        updateItemDisplay(data.detected_items);
+      } else {
+        console.error('Unable to fetch detection results');
+      }
+    }
+
+    function updateItemDisplay(detectedItems) {
+      console.log("Detected items to update:", detectedItems);
+      const items = {
+        'box': document.getElementById('box'),
+        'collection point': document.getElementById('collection point'),
+        'wet': document.getElementById('wet')
+      };
+
+      let wetDetected = detectedItems.includes('wet');
+
+      for (const [item, element] of Object.entries(items)) {
+        if (detectedItems.includes(item)) {
+          console.log(`Detected: ${item}`);
+          element.classList.remove('not-detected');
+          element.classList.add('detected');
+        } else {
+          console.log(`Not detected: ${item}`);
+          element.classList.remove('detected');
+          element.classList.add('not-detected');
+        }
+      }
+
+      // Update the yes-no box based on 'wet' detection
+      const yesNoBox = document.getElementById('yes-no-box');
+      if (wetDetected) {
+        yesNoBox.textContent = "No";  // Show "No" if wet is detected
+        yesNoBox.classList.remove('yes');
+        yesNoBox.classList.add('no');
+      } else {
+        yesNoBox.textContent = "Yes";  // Show "Yes" otherwise
+        yesNoBox.classList.remove('no');
+        yesNoBox.classList.add('yes');
+      }
+    }
+
+    // Fetch results periodically if needed
+    setInterval(fetchDetectionResults, 1000);  // Adjust the interval as necessary
+
+    // 在頁面加載時獲取檢測結果
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchDetectionResults();  // Call it directly
+    });
+  </script>
 
 </head>
 
@@ -227,9 +282,8 @@
                 <div class="tab-content p-0">
                   <div class="chart tab-pane active" id="revenue-chart" style="position: relative; height: 700px;">
                     <div id="itemList">
-                      <div class="item not-detected" id="Dump-truck">卸土車</div>
-                      <div class="item not-detected" id="Person">人</div>
-                      <div class="item not-detected" id="Other-truck">Other-truck</div>
+                      <div class="item not-detected" id="box">truck</div>
+                      <div class="item not-detected" id="collection point">collection point</div>
                       <div class="item not-detected" id="wet">Wet detected</div>
                     </div>
 
