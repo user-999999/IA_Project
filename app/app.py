@@ -228,7 +228,6 @@ lock = threading.Lock()  # 鎖，確保線程安全更新
 #         print(f"無法保存: {filename}")  # 輸出保存失敗的消息
 
 # def compress_frame(frame, quality=80):
-#     # 壓縮幀
 #     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]  # 設置JPEG質量
 #     result, buffer = cv2.imencode('.jpg', frame, encode_param)  # 編碼為JPEG
 #     return cv2.imdecode(buffer, cv2.IMREAD_COLOR)  # 解碼為圖像
@@ -345,8 +344,7 @@ def generate_video_frames(video_path):
 
         if results:
             annotated_frame = results[0].plot()  # 繪製標註幀
-            compressed_frame = compress_frame(annotated_frame)  # 壓縮幀
-            ret, buffer = cv2.imencode('.jpg', compressed_frame)  # 將幀編碼為JPEG格式
+            ret, buffer = cv2.imencode('.jpg', annotated_frame)  # 將幀編碼為JPEG格式
             frame_bytes = buffer.tobytes()  # 轉換為字節流
 
             yield (b'--frame\r\n'
@@ -362,12 +360,12 @@ def video_feed(filename):
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-# @app.route('/get_detection_results', methods=['GET'])
-# def get_detection_results():
-#     with lock:
-#         unique_items = list(set(detected_items))  # 返回唯一的檢測物體
-#     logging.info(f"當前檢測到的物體: {unique_items}")
-#     return jsonify(detected_items=unique_items)  # 返回檢測到的物體列表
+@app.route('/get_detection_results', methods=['GET'])
+def get_detection_results():
+    with lock:
+        unique_items = list(set(detected_items))  # 返回唯一的檢測物體
+    logging.info(f"當前檢測到的物體: {unique_items}")
+    return jsonify(detected_items=unique_items)  # 返回檢測到的物體列表
 
 ########################################
 # template(video)功能
@@ -404,8 +402,7 @@ def generate_template_frames(video_path):
 
         if results:
             annotated_frame = results[0].plot()
-            compressed_frame = compress_frame(annotated_frame)
-            ret, buffer = cv2.imencode('.jpg', compressed_frame)
+            ret, buffer = cv2.imencode('.jpg', annotated_frame)
             frame_bytes = buffer.tobytes()
 
             yield (b'--frame\r\n'
@@ -429,6 +426,7 @@ def template_image_feed():
     image_path = os.path.join(folder_path, random.choice(image_paths))
     print("=====")
     print(image_path)
+    print(model_test.names)
     print("=====")
 
     image = cv2.imread(image_path)
